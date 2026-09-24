@@ -339,6 +339,7 @@ function showMassDelta(playerResult) {
   );
   if (!player || !playerResult.massDelta) return;
   massDeltas.push({
+    playerId: String(playerResult.id),
     x: player.x,
     y: player.y,
     value: playerResult.massDelta,
@@ -682,15 +683,21 @@ function draw() {
     ctx.shadowBlur = 18;
     ctx.lineWidth = 9;
     ctx.strokeStyle = "#11162f";
+    const trackedPlayer = gameState.players.find(
+      (p) => p.id === delta.playerId,
+    );
+    const trackedBody = trackedPlayer && blobBodies.get(delta.playerId);
+    const deltaX = trackedBody?.x ?? trackedPlayer?.x ?? delta.x;
+    const deltaY = trackedBody?.y ?? trackedPlayer?.y ?? delta.y;
     ctx.strokeText(
       `${delta.value > 0 ? "+" : ""}${delta.value}`,
-      delta.x,
-      delta.y - 42 - (1600 - remaining) * 0.035,
+      deltaX,
+      deltaY - 42 - (1600 - remaining) * 0.035,
     );
     ctx.fillText(
       `${delta.value > 0 ? "+" : ""}${delta.value}`,
-      delta.x,
-      delta.y - 42 - (1600 - remaining) * 0.035,
+      deltaX,
+      deltaY - 42 - (1600 - remaining) * 0.035,
     );
     ctx.restore();
     return true;
