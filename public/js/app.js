@@ -293,16 +293,16 @@ function openDuel(d) {
   );
   window.duelEnds = d.endsAt;
 }
+let arenaAnimationFrame = null;
 function startGame(end) {
-  let last = performance.now();
-  function frame(t) {
-    const dt = (t - last) / 1000;
-    last = t;
+  cancelAnimationFrame(arenaAnimationFrame);
+  blobBodies.clear();
+  function frame() {
     draw();
     updateHud(end);
-    requestAnimationFrame(frame);
+    arenaAnimationFrame = requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  arenaAnimationFrame = requestAnimationFrame(frame);
 }
 function updateHud(end) {
   const left = Math.max(0, end - Date.now());
@@ -550,7 +550,14 @@ function draw() {
     ctx.stroke();
     ctx.restore();
   }
-  for (const p of gameState.players) {
+  const blobNow = performance.now();
+  for (const id of blobBodies.keys()) {
+    if (!gameState.players.some((p) => p.id === id)) blobBodies.delete(id);
+  }
+  for (const player of gameState.players) {
+    const body = drawBlob(ctx, player, 10 + Math.sqrt(player.mass) * 3,
+      (config.skins.find((s) => s.id === player.skin) || config.skins[0]).color, blobNow);
+    const p = { ...player, x: body.x, y: body.y };
     const skin = config.skins.find((s) => s.id === p.skin) || config.skins[0],
       r = 10 + Math.sqrt(p.mass) * 3;
     ctx.save();
@@ -567,30 +574,6 @@ function draw() {
       ctx.lineWidth = 5;
       ctx.stroke();
     }
-    ctx.shadowColor = skin.color;
-    ctx.shadowBlur = 22;
-    const g = ctx.createRadialGradient(
-      p.x - r * 0.35,
-      p.y - r * 0.4,
-      r * 0.1,
-      p.x,
-      p.y,
-      r,
-    );
-    g.addColorStop(0, "#fff");
-    g.addColorStop(0.18, skin.color);
-    g.addColorStop(1, skin.color + "99");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "#fff";
-    ctx.globalAlpha = 0.85;
-    ctx.beginPath();
-    ctx.arc(p.x - r * 0.3, p.y - r * 0.3, r * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
     ctx.textAlign = "center";
     ctx.font = `900 ${mobileMode() ? 36 : 24}px Space Grotesk`;
     ctx.fillStyle = "#fff";

@@ -1,4 +1,4 @@
-const CACHE = "trivia-arena-v2";
+const CACHE = "trivia-arena-v3-blobs";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
@@ -9,6 +9,7 @@ self.addEventListener("install", (event) => {
           "/manifest.webmanifest",
           "/css/style.css",
           "/js/app.js",
+          "/js/blobs.js",
           "/assets/icon.svg",
         ]),
       ),
