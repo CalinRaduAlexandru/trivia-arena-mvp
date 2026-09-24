@@ -22,6 +22,7 @@ const mobileStyle = document.createElement("style");
 mobileStyle.textContent = `
   @media (pointer: coarse), (max-width: 700px) {
     .in-game .top { display:none; }
+    .in-game, .in-game #app, .in-game main, .in-game .game-screen { width:100vw; height:100dvh; min-height:100dvh; overflow:hidden; }
     .in-game .game-screen { min-height:100vh; }
     .in-game .game-wrap { height:100vh; }
     #mobile-controls { display: block !important; }
@@ -49,6 +50,25 @@ if (minimapCanvas) {
   minimapCanvas.width = 304;
   minimapCanvas.height = 192;
 }
+let deferredInstallPrompt = null;
+const installApp = document.createElement("button");
+installApp.textContent = "INSTALĂ APLICAȚIA";
+installApp.style.cssText =
+  "display:none;position:fixed;z-index:100;top:72px;left:50%;transform:translateX(-50%);border:0;border-radius:999px;padding:13px 18px;background:#6ee7f9;color:#11162f;font:800 12px 'Space Grotesk';box-shadow:0 8px 24px #0005";
+document.body.append(installApp);
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if (mobileMode() && !window.matchMedia("(display-mode: standalone)").matches)
+    installApp.style.display = "block";
+});
+installApp.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installApp.style.display = "none";
+});
 let token = localStorage.getItem("ta_token"),
   me = null,
   room = null,
@@ -571,18 +591,18 @@ function draw() {
     ctx.arc(p.x - r * 0.3, p.y - r * 0.3, r * 0.12, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "#fff";
-    ctx.font = `800 ${mobileMode() ? 32 : 21}px DM Sans`;
     ctx.textAlign = "center";
+    ctx.font = `900 ${mobileMode() ? 36 : 24}px Space Grotesk`;
+    ctx.fillStyle = "#fff";
     ctx.lineWidth = 7;
     ctx.strokeStyle = "#11162f";
-    ctx.strokeText(p.username, p.x, p.y + r + 27);
-    ctx.fillText(p.username, p.x, p.y + r + 27);
-    ctx.font = `900 ${mobileMode() ? 36 : 18}px Space Grotesk`;
-    ctx.fillStyle = "#ffe078";
-    ctx.lineWidth = 6;
-    ctx.strokeText(`MASS ${Math.round(p.mass)}`, p.x, p.y + r + 51);
-    ctx.fillText(`MASS ${Math.round(p.mass)}`, p.x, p.y + r + 51);
+    ctx.strokeText(Math.round(p.mass), p.x, p.y + (mobileMode() ? 13 : 9));
+    ctx.fillText(Math.round(p.mass), p.x, p.y + (mobileMode() ? 13 : 9));
+    ctx.font = `800 ${mobileMode() ? 32 : 21}px DM Sans`;
+    ctx.fillStyle = "#fff";
+    ctx.lineWidth = 7;
+    ctx.strokeText(p.username, p.x, p.y + r + 31);
+    ctx.fillText(p.username, p.x, p.y + r + 31);
     ctx.restore();
   }
   massDeltas = massDeltas.filter((delta) => {

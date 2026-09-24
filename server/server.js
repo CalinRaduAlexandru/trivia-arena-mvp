@@ -272,15 +272,6 @@ function tick(r, dt) {
     p.x = Math.max(35, Math.min(cfg.arena.width - 35, p.x + p.vx * dt));
     p.y = Math.max(35, Math.min(cfg.arena.height - 35, p.y + p.vy * dt));
   }
-  for (let i = 0; i < ps.length; i++)
-    for (let j = i + 1; j < ps.length; j++) {
-      const a = ps[i],
-        b = ps[j];
-      if (a.duel || b.duel || a.cooldownUntil > now || b.cooldownUntil > now)
-        continue;
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (d < (Math.sqrt(a.mass) + Math.sqrt(b.mass)) * 2.7) beginDuel(r, a, b);
-    }
   for (const p of ps)
     if (p.duel && now >= p.duel.endsAt) {
       const other = r.players.get(p.duel.opponentId);
