@@ -225,6 +225,13 @@ function roomAck(x) {
     return;
   }
   room = x.room;
+  if (room.status === "playing" && room.roundEndsAt) {
+    show("game");
+    $("#hud-room").textContent = room.code;
+    requestAnimationFrame(() => resize());
+    startGame(room.roundEndsAt);
+    return;
+  }
   renderRoom(room);
   show("room");
 }

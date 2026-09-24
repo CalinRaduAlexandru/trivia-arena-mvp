@@ -86,6 +86,7 @@ function roomView(r) {
     code: r.code,
     hostId: r.hostId,
     status: r.status,
+    roundEndsAt: r.roundEndsAt || null,
     players: [...r.players.values()].map((p) => ({
       id: p.id,
       username: p.user.username,
@@ -116,6 +117,20 @@ function spawn(r) {
     p.lastDirection = { x: 1, y: 0 };
     p.netCooldownUntil = 0;
   }
+}
+function spawnLatePlayer(r, p) {
+  p.x = 80 + crypto.randomInt(Math.max(1, cfg.arena.width - 160));
+  p.y = 80 + crypto.randomInt(Math.max(1, cfg.arena.height - 160));
+  p.vx = 0;
+  p.vy = 0;
+  p.mass = cfg.arena.baseMass + Math.log1p(p.user.correct) * 18;
+  p.roundCorrect = 0;
+  p.roundWins = 0;
+  p.roundLosses = 0;
+  p.duel = null;
+  p.cooldownUntil = 0;
+  p.lastDirection = { x: 1, y: 0 };
+  p.netCooldownUntil = 0;
 }
 function publicState(r) {
   return {
@@ -433,11 +448,11 @@ function joinRoom(socket, token, code, ack, create) {
       };
       rooms.set(code, r);
     }
-    if (r.status !== "lobby")
+    if (r.status !== "lobby" && r.status !== "playing")
       return ack?.({ error: "This game has already started." });
     if (r.players.size >= 8) return ack?.({ error: "Room is full." });
     const id = String(u.id);
-    r.players.set(id, {
+    const newPlayer = {
       id,
       user: u,
       socketId: socket.id,
@@ -451,7 +466,9 @@ function joinRoom(socket, token, code, ack, create) {
       cooldownUntil: 0,
       lastDirection: { x: 1, y: 0 },
       netCooldownUntil: 0,
-    });
+    };
+    r.players.set(id, newPlayer);
+    if (r.status === "playing") spawnLatePlayer(r, newPlayer);
     socket.join(r.code);
     emitRoom(r);
     ack?.({ room: roomView(r) });
