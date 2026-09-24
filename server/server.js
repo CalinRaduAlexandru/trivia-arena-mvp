@@ -196,6 +196,31 @@ function beginDuel(r, a, b) {
     endsAt,
   });
 }
+function calculateMassTransfer(winnerMass, loserMass) {
+  const difference = Math.max(0, loserMass - winnerMass);
+  if (winnerMass < loserMass) {
+    return {
+      gain: Math.min(
+        cfg.arena.upsetMaxGain,
+        cfg.arena.transfer + Math.floor(difference / 15),
+      ),
+      loss: Math.min(
+        cfg.arena.upsetMaxLoss,
+        cfg.arena.transfer + 4 + Math.floor(difference / 7),
+      ),
+    };
+  }
+  return {
+    gain: Math.max(
+      1,
+      cfg.arena.transfer - Math.floor((winnerMass - loserMass) / 10),
+    ),
+    loss: Math.max(
+      1,
+      cfg.arena.transfer - Math.floor((winnerMass - loserMass) / 10),
+    ),
+  };
+}
 function resolveDuel(r, a, b) {
   if (!a.duel || !b.duel) return;
   const startingMassA = a.mass,
@@ -212,16 +237,12 @@ function resolveDuel(r, a, b) {
   let winner = null;
   if (ac && !bc) {
     winner = a;
-    a.mass += cfg.arena.transfer;
-    b.mass = Math.max(cfg.arena.minMass, b.mass - cfg.arena.transfer);
     a.user.duel_wins++;
     b.user.duel_losses++;
     a.roundWins++;
     b.roundLosses++;
   } else if (bc && !ac) {
     winner = b;
-    b.mass += cfg.arena.transfer;
-    a.mass = Math.max(cfg.arena.minMass, a.mass - cfg.arena.transfer);
     b.user.duel_wins++;
     a.user.duel_losses++;
     b.roundWins++;
@@ -229,6 +250,12 @@ function resolveDuel(r, a, b) {
   } else if (!ac && !bc) {
     a.mass = Math.max(cfg.arena.minMass, a.mass - cfg.arena.wrongPenalty);
     b.mass = Math.max(cfg.arena.minMass, b.mass - cfg.arena.wrongPenalty);
+  }
+  if (winner) {
+    const loser = winner === a ? b : a;
+    const transfer = calculateMassTransfer(winner.mass, loser.mass);
+    winner.mass += transfer.gain;
+    loser.mass = Math.max(cfg.arena.minMass, loser.mass - transfer.loss);
   }
   saveUser(a.user);
   saveUser(b.user);
