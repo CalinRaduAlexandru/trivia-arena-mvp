@@ -14,6 +14,7 @@ const app = express(),
   io = new Server(httpServer);
 const rooms = new Map();
 app.use(express.json());
+app.set("trust proxy", 1);
 app.use(express.static(require("path").join(__dirname, "..", "public")));
 app.use("/api/", rateLimit({ windowMs: 60_000, max: 120 }));
 function cleanName(v) {
