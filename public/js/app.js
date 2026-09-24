@@ -512,15 +512,21 @@ function sendInput() {
 }
 const joystick = document.querySelector("#joystick");
 const joystickThumb = document.querySelector("#joystick-thumb");
-let joystickTouch = null;
-function updateJoystick(touch) {
+let joystickPointerId = null;
+let joystickActive = false;
+let joystickVector = { x: 0, y: 0 };
+let joystickHeartbeat = null;
+function emitJoystickInput() {
+  if (joystickActive) socket.emit("player:input", joystickVector);
+}
+function updateJoystick(clientX, clientY) {
   const rect = joystick.getBoundingClientRect();
   const center = {
     x: rect.left + rect.width / 2,
     y: rect.top + rect.height / 2,
   };
-  let dx = touch.clientX - center.x,
-    dy = touch.clientY - center.y;
+  let dx = clientX - center.x,
+    dy = clientY - center.y;
   const max = rect.width * 0.31,
     distance = Math.hypot(dx, dy) || 1;
   if (distance > max) {
@@ -528,35 +534,57 @@ function updateJoystick(touch) {
     dy = (dy / distance) * max;
   }
   joystickThumb.style.transform = `translate(${dx}px, ${dy}px)`;
-  socket.emit("player:input", { x: dx / max, y: dy / max });
+  joystickVector = { x: dx / max, y: dy / max };
+  emitJoystickInput();
 }
-joystick?.addEventListener(
-  "touchstart",
-  (event) => {
-    joystickTouch = event.changedTouches[0].identifier;
-    updateJoystick(event.changedTouches[0]);
-    event.preventDefault();
-  },
-  { passive: false },
-);
-joystick?.addEventListener(
-  "touchmove",
-  (event) => {
-    const touch = [...event.changedTouches].find(
-      (item) => item.identifier === joystickTouch,
-    );
-    if (touch) updateJoystick(touch);
-    event.preventDefault();
-  },
-  { passive: false },
-);
-function stopJoystick() {
-  joystickTouch = null;
+function stopJoystick(pointerId = null) {
+  if (
+    !joystickActive ||
+    (pointerId !== null && pointerId !== joystickPointerId)
+  )
+    return;
+  const activePointerId = joystickPointerId;
+  joystickPointerId = null;
+  joystickActive = false;
+  joystickVector = { x: 0, y: 0 };
+  if (joystickHeartbeat) {
+    clearInterval(joystickHeartbeat);
+    joystickHeartbeat = null;
+  }
   joystickThumb.style.transform = "translate(0, 0)";
   socket.emit("player:input", { x: 0, y: 0 });
+  if (
+    activePointerId !== null &&
+    joystick.hasPointerCapture?.(activePointerId)
+  ) {
+    joystick.releasePointerCapture(activePointerId);
+  }
 }
-joystick?.addEventListener("touchend", stopJoystick);
-joystick?.addEventListener("touchcancel", stopJoystick);
+joystick?.addEventListener("pointerdown", (event) => {
+  if (joystickActive) return;
+  joystickPointerId = event.pointerId;
+  joystickActive = true;
+  joystick.setPointerCapture?.(event.pointerId);
+  updateJoystick(event.clientX, event.clientY);
+  joystickHeartbeat = setInterval(emitJoystickInput, 50);
+  event.preventDefault();
+});
+joystick?.addEventListener("pointermove", (event) => {
+  if (!joystickActive || event.pointerId !== joystickPointerId) return;
+  updateJoystick(event.clientX, event.clientY);
+  event.preventDefault();
+});
+joystick?.addEventListener("pointerup", (event) =>
+  stopJoystick(event.pointerId),
+);
+joystick?.addEventListener("pointercancel", (event) =>
+  stopJoystick(event.pointerId),
+);
+joystick?.addEventListener("lostpointercapture", () => stopJoystick());
+addEventListener("blur", () => stopJoystick());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopJoystick();
+});
 const mobileAttack = document.querySelector("#mobile-attack");
 const camera = { x: null, y: null };
 mobileAttack?.addEventListener(
