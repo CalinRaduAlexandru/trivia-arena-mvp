@@ -155,55 +155,70 @@ $("#logout").onclick = () => {
   localStorage.removeItem("ta_token");
   location.reload();
 };
-const joinFeedback = document.createElement('div');
-joinFeedback.className = 'error';
-joinFeedback.id = 'join-feedback';
-joinFeedback.setAttribute('role', 'status');
-joinFeedback.setAttribute('aria-live', 'polite');
-$('#join-form').append(joinFeedback);
-const createFeedback = document.createElement('div');
-createFeedback.className = 'error';
-createFeedback.setAttribute('role', 'status');
-$('#create-room').after(createFeedback);
+const joinFeedback = document.createElement("div");
+joinFeedback.className = "error";
+joinFeedback.id = "join-feedback";
+joinFeedback.setAttribute("role", "status");
+joinFeedback.setAttribute("aria-live", "polite");
+$("#join-form").append(joinFeedback);
+const createFeedback = document.createElement("div");
+createFeedback.className = "error";
+createFeedback.setAttribute("role", "status");
+$("#create-room").after(createFeedback);
 const roomErrors = {
-  'Please log in again.': 'Sesiunea a expirat. Ieși din cont și autentifică-te din nou.',
-  'Room not found.': 'Camera nu există sau a fost închisă. Verifică codul cu gazda.',
-  'This game has already started.': 'Runda a început deja. Poți intra doar într-o cameră care încă așteaptă jucători.',
-  'Room is full.': 'Camera este plină (maximum 8 jucători).',
+  "Please log in again.":
+    "Sesiunea a expirat. Ieși din cont și autentifică-te din nou.",
+  "Room not found.":
+    "Camera nu există sau a fost închisă. Verifică codul cu gazda.",
+  "This game has already started.":
+    "Runda a început deja. Poți intra doar într-o cameră care încă așteaptă jucători.",
+  "Room is full.": "Camera este plină (maximum 8 jucători).",
 };
 function requestRoom(event, data, button, feedback) {
   if (button.disabled) return;
   if (!socket.connected) {
-    feedback.textContent = 'Conectarea la server nu este gata. Așteaptă câteva secunde și încearcă din nou.';
+    feedback.textContent =
+      "Conectarea la server nu este gata. Așteaptă câteva secunde și încearcă din nou.";
     return;
   }
   const label = button.innerHTML;
   button.disabled = true;
-  button.textContent = 'SE CONECTEAZĂ…';
-  feedback.textContent = '';
+  button.textContent = "SE CONECTEAZĂ…";
+  feedback.textContent = "";
   socket.timeout(10000).emit(event, data, (error, response) => {
     button.disabled = false;
     button.innerHTML = label;
     if (error) {
-      feedback.textContent = 'Serverul nu a răspuns la timp. Încearcă din nou.';
+      feedback.textContent = "Serverul nu a răspuns la timp. Încearcă din nou.";
       return;
     }
     if (response?.error || !response?.room) {
-      feedback.textContent = roomErrors[response?.error] || response?.error || 'Nu s-a putut deschide camera.';
+      feedback.textContent =
+        roomErrors[response?.error] ||
+        response?.error ||
+        "Nu s-a putut deschide camera.";
       return;
     }
     roomAck(response);
   });
 }
-$('#create-room').onclick = () => requestRoom('room:create', {token}, $('#create-room'), createFeedback);
+$("#create-room").onclick = () =>
+  requestRoom("room:create", { token }, $("#create-room"), createFeedback);
 $("#join-form").onsubmit = (e) => {
   e.preventDefault();
-  requestRoom('room:join', {token, code: $('#room-code').value.trim()}, $('#join-form button'), joinFeedback);
+  requestRoom(
+    "room:join",
+    { token, code: $("#room-code").value.trim() },
+    $("#join-form button"),
+    joinFeedback,
+  );
 };
-$('#room-code').addEventListener('invalid', () => {
-  joinFeedback.textContent = 'Introdu codul camerei: exact 4 cifre.';
+$("#room-code").addEventListener("invalid", () => {
+  joinFeedback.textContent = "Introdu codul camerei: exact 4 cifre.";
 });
-$('#room-code').addEventListener('input', () => { joinFeedback.textContent = ''; });
+$("#room-code").addEventListener("input", () => {
+  joinFeedback.textContent = "";
+});
 function roomAck(x) {
   if (x?.error) {
     $("#room-error").textContent = x.error;
@@ -256,7 +271,14 @@ socket.on("game:state", (s) => {
   gameState = s;
 });
 socket.on("duel:started", (d) => openDuel(d));
-socket.on('slime:cast', ({playerId}) => {
+socket.on("duel:cancelled", () => {
+  duelAnswered = true;
+  duelSelectedIndex = null;
+  duelQuestionId = null;
+  $("#duel-card").classList.add("hidden");
+  toast("DUEL ANULAT · ADVERSARUL A IEȘIT");
+});
+socket.on("slime:cast", ({ playerId }) => {
   const body = blobBodies.get(playerId);
   if (body) body.spitAt = performance.now();
 });
@@ -268,6 +290,10 @@ socket.on("duel:visible", (d) => {
   }
 });
 socket.on("duel:resolved", (r) => {
+  duelAnswered = true;
+  duelSelectedIndex = null;
+  duelQuestionId = null;
+  $("#duel-card").classList.add("hidden");
   showMassDelta(r.a);
   showMassDelta(r.b);
   if (r.winnerId) {
@@ -304,6 +330,9 @@ function escapeHtml(s) {
 }
 let spectatorEnds = 0;
 let massDeltas = [];
+let duelQuestionId = null;
+let duelAnswered = false;
+let duelSelectedIndex = null;
 function showMassDelta(playerResult) {
   const player = gameState?.players.find(
     (p) => p.id === String(playerResult.id),
@@ -318,6 +347,14 @@ function showMassDelta(playerResult) {
   });
 }
 function openDuel(d) {
+  if (
+    duelQuestionId === d.question.id &&
+    !$("#duel-card").classList.contains("hidden")
+  )
+    return;
+  duelQuestionId = d.question.id;
+  duelAnswered = false;
+  duelSelectedIndex = null;
   $("#duel-card").classList.remove("hidden");
   $("#duel-opponent").textContent = d.opponent.username;
   $("#duel-question").textContent = d.question.prompt;
@@ -330,9 +367,10 @@ function openDuel(d) {
   document.querySelectorAll(".answer").forEach(
     (b) =>
       (b.onclick = () => {
+        duelSelectedIndex = Number(b.dataset.index);
         document
           .querySelectorAll(".answer")
-          .forEach((x) => (x.disabled = true));
+          .forEach((x) => x.classList.remove("selected"));
         b.classList.add("selected");
         socket.emit("duel:answer", { index: Number(b.dataset.index) });
       }),
@@ -405,10 +443,14 @@ addEventListener("resize", resize);
 resize();
 let keys = {};
 function canUseGameKeys(event) {
-  const editable = (element) => element instanceof Element &&
+  const editable = (element) =>
+    element instanceof Element &&
     (element.matches("input, textarea, select") || element.isContentEditable);
-  return !$("#game").classList.contains("hidden") &&
-    !editable(event.target) && !editable(document.activeElement);
+  return (
+    !$("#game").classList.contains("hidden") &&
+    !editable(event.target) &&
+    !editable(document.activeElement)
+  );
 }
 addEventListener("keydown", (e) => {
   if (!canUseGameKeys(e) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -428,16 +470,9 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (
-    [
-      "ArrowUp",
-      "ArrowDown",
-      "ArrowLeft",
-      "ArrowRight",
-      "w",
-      "a",
-      "s",
-      "d",
-    ].map((key) => key.toLowerCase()).includes(e.key.toLowerCase())
+    ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]
+      .map((key) => key.toLowerCase())
+      .includes(e.key.toLowerCase())
   ) {
     keys[e.key.toLowerCase()] = true;
     e.preventDefault();
@@ -540,7 +575,10 @@ function draw() {
     halfWorldH = h / (2 * scale);
   const edgePadding = 16 / scale;
   const bottomPadding = mobileMode()
-    ? (joystick.getBoundingClientRect().height + parseFloat(getComputedStyle(joystick).bottom) + 16) / scale
+    ? (joystick.getBoundingClientRect().height +
+        parseFloat(getComputedStyle(joystick).bottom) +
+        16) /
+      scale
     : edgePadding;
   const targetCameraX = Math.max(
     halfWorldW - edgePadding,
@@ -591,8 +629,13 @@ function draw() {
     if (!gameState.players.some((p) => p.id === id)) blobBodies.delete(id);
   }
   for (const player of gameState.players) {
-    const body = drawBlob(ctx, player, 10 + Math.sqrt(player.mass) * 3,
-      (config.skins.find((s) => s.id === player.skin) || config.skins[0]).color, blobNow);
+    const body = drawBlob(
+      ctx,
+      player,
+      10 + Math.sqrt(player.mass) * 3,
+      (config.skins.find((s) => s.id === player.skin) || config.skins[0]).color,
+      blobNow,
+    );
     const p = { ...player, x: body.x, y: body.y };
     if (p.slime) drawAttachedSlime(ctx, p, performance.now());
     const skin = config.skins.find((s) => s.id === p.skin) || config.skins[0],

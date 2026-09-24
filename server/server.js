@@ -242,6 +242,17 @@ function resolveDuel(r, a, b) {
   a.cooldownUntil = b.cooldownUntil = Date.now() + cfg.arena.cooldownMs;
   io.to(r.code).emit("duel:resolved", result);
 }
+function cancelDuel(r, p, reason = "cancelled") {
+  if (!p?.duel) return;
+  const opponent = r.players.get(p.duel.opponentId);
+  p.duel = null;
+  p.cooldownUntil = Date.now() + cfg.arena.cooldownMs;
+  if (opponent?.duel) {
+    opponent.duel = null;
+    opponent.cooldownUntil = Date.now() + cfg.arena.cooldownMs;
+  }
+  io.to(r.code).emit("duel:cancelled", { reason });
+}
 function tick(r, dt) {
   if (r.status !== "playing") return;
   const now = Date.now();
@@ -268,8 +279,15 @@ function tick(r, dt) {
         const owner = r.players.get(net.ownerId);
         if (owner && !owner.duel && owner.cooldownUntil <= now) {
           beginDuel(r, owner, target);
-          target.slime = { angle: net.angle + Math.PI, color: net.color, hitAt: now };
-          io.to(r.code).emit('slime:hit', { targetId: target.id, ...target.slime });
+          target.slime = {
+            angle: net.angle + Math.PI,
+            color: net.color,
+            hitAt: now,
+          };
+          io.to(r.code).emit("slime:hit", {
+            targetId: target.id,
+            ...target.slime,
+          });
         }
         return false;
       }
@@ -285,6 +303,7 @@ function tick(r, dt) {
     if (p.duel && now >= p.duel.endsAt) {
       const other = r.players.get(p.duel.opponentId);
       if (other) resolveDuel(r, p, other);
+      else cancelDuel(r, p, "opponent_left");
     }
   io.to(r.code).emit("game:state", publicState(r));
 }
@@ -317,7 +336,9 @@ io.on("connection", (socket) => {
     const direction = p.lastDirection || { x: 1, y: 0 };
     p.netCooldownUntil = now + 3000;
     p.room.nets.push({
-      color: cfg.skins.find(s => s.id === p.user.equipped_skin)?.color || '#6ee7f9',
+      color:
+        cfg.skins.find((s) => s.id === p.user.equipped_skin)?.color ||
+        "#6ee7f9",
       bornAt: now,
       id: `${p.id}-${now}`,
       ownerId: p.id,
@@ -326,16 +347,16 @@ io.on("connection", (socket) => {
       angle: Math.atan2(direction.y, direction.x),
       expiresAt: now + (cfg.arena.netRange / cfg.arena.netSpeed) * 1000,
     });
-    io.to(p.room.code).emit('slime:cast', { playerId: p.id });
+    io.to(p.room.code).emit("slime:cast", { playerId: p.id });
   });
   socket.on("duel:answer", ({ index }, ack) => {
     const p = findPlayer(socket);
     if (!p || !p.duel) return ack?.({ ok: false });
-    if (p.duel.answers.has(p.id)) return ack?.({ ok: false });
-    p.duel.answers.set(p.id, Number(index));
+    const answer = Number(index);
+    if (!Number.isInteger(answer) || answer < 0 || answer > 3)
+      return ack?.({ ok: false });
+    p.duel.answers.set(p.id, answer);
     ack?.({ ok: true });
-    const o = p.room.players.get(p.duel.opponentId);
-    if (o && o.duel && o.duel.answers.has(o.id)) resolveDuel(p.room, p, o);
   });
   socket.on("game:again", () => {
     const p = findPlayer(socket);
@@ -344,6 +365,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     const p = findPlayer(socket);
     if (!p) return;
+    if (p.duel) cancelDuel(p.room, p, "opponent_left");
     p.room.players.delete(p.id);
     if (p.room.players.size === 0) rooms.delete(p.room.code);
     else {
@@ -370,7 +392,8 @@ function joinRoom(socket, token, code, ack, create) {
     if (!create && !rooms.has(code)) return ack?.({ error: "Room not found." });
     let r = create ? null : rooms.get(code);
     if (create) {
-      if (rooms.size >= 9000) return ack?.({ error: "All rooms are busy. Try again later." });
+      if (rooms.size >= 9000)
+        return ack?.({ error: "All rooms are busy. Try again later." });
       do code = String(crypto.randomInt(1000, 10000));
       while (rooms.has(code));
       r = {
