@@ -155,12 +155,55 @@ $("#logout").onclick = () => {
   localStorage.removeItem("ta_token");
   location.reload();
 };
-$("#create-room").onclick = () =>
-  socket.emit("room:create", { token }, roomAck);
+const joinFeedback = document.createElement('div');
+joinFeedback.className = 'error';
+joinFeedback.id = 'join-feedback';
+joinFeedback.setAttribute('role', 'status');
+joinFeedback.setAttribute('aria-live', 'polite');
+$('#join-form').append(joinFeedback);
+const createFeedback = document.createElement('div');
+createFeedback.className = 'error';
+createFeedback.setAttribute('role', 'status');
+$('#create-room').after(createFeedback);
+const roomErrors = {
+  'Please log in again.': 'Sesiunea a expirat. Ieși din cont și autentifică-te din nou.',
+  'Room not found.': 'Camera nu există sau a fost închisă. Verifică codul cu gazda.',
+  'This game has already started.': 'Runda a început deja. Poți intra doar într-o cameră care încă așteaptă jucători.',
+  'Room is full.': 'Camera este plină (maximum 8 jucători).',
+};
+function requestRoom(event, data, button, feedback) {
+  if (button.disabled) return;
+  if (!socket.connected) {
+    feedback.textContent = 'Conectarea la server nu este gata. Așteaptă câteva secunde și încearcă din nou.';
+    return;
+  }
+  const label = button.innerHTML;
+  button.disabled = true;
+  button.textContent = 'SE CONECTEAZĂ…';
+  feedback.textContent = '';
+  socket.timeout(10000).emit(event, data, (error, response) => {
+    button.disabled = false;
+    button.innerHTML = label;
+    if (error) {
+      feedback.textContent = 'Serverul nu a răspuns la timp. Încearcă din nou.';
+      return;
+    }
+    if (response?.error || !response?.room) {
+      feedback.textContent = roomErrors[response?.error] || response?.error || 'Nu s-a putut deschide camera.';
+      return;
+    }
+    roomAck(response);
+  });
+}
+$('#create-room').onclick = () => requestRoom('room:create', {token}, $('#create-room'), createFeedback);
 $("#join-form").onsubmit = (e) => {
   e.preventDefault();
-  socket.emit("room:join", { token, code: $("#room-code").value }, roomAck);
+  requestRoom('room:join', {token, code: $('#room-code').value.trim()}, $('#join-form button'), joinFeedback);
 };
+$('#room-code').addEventListener('invalid', () => {
+  joinFeedback.textContent = 'Introdu codul camerei: exact 4 cifre.';
+});
+$('#room-code').addEventListener('input', () => { joinFeedback.textContent = ''; });
 function roomAck(x) {
   if (x?.error) {
     $("#room-error").textContent = x.error;
