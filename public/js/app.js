@@ -479,9 +479,9 @@ function draw() {
   const focus =
     gameState.players.find((p) => p.id === String(me?.id)) ||
     gameState.players[0];
-  const zoom = mobileMode() ? 2.1 : 1.18;
+  const zoom = mobileMode() ? 1.15 : 1.18;
   const scale =
-    Math.min(w / config.arena.width, h / config.arena.height) * zoom;
+    Math.max(w / config.arena.width, h / config.arena.height) * zoom;
   const halfWorldW = w / (2 * scale),
     halfWorldH = h / (2 * scale);
   const targetCameraX = Math.max(
@@ -657,18 +657,18 @@ function drawMinimap() {
   const local = gameState.players.find((p) => p.id === String(me?.id));
   const visibleWorldW =
     canvas.clientWidth /
-    (Math.min(
+    (Math.max(
       canvas.clientWidth / config.arena.width,
       canvas.clientHeight / config.arena.height,
     ) *
-      (mobileMode() ? 2.1 : 1.18));
+      (mobileMode() ? 1.15 : 1.18));
   const visibleWorldH =
     canvas.clientHeight /
-    (Math.min(
+    (Math.max(
       canvas.clientWidth / config.arena.width,
       canvas.clientHeight / config.arena.height,
     ) *
-      (mobileMode() ? 2.1 : 1.18));
+      (mobileMode() ? 1.15 : 1.18));
   const viewX = camera.x - visibleWorldW / 2,
     viewY = camera.y - visibleWorldH / 2;
   minimapCtx.strokeStyle = "#ffffffcc";
