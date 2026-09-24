@@ -4,6 +4,10 @@
 #app-install-dialog p { color:#dce4ff; }
 #app-install-dialog button { padding:13px 16px; border-radius:12px; background:#6ee7f9; color:#171b35; font-weight:700; margin:5px 5px 5px 0; }
 #app-install-dialog .dismiss { background:#ffffff20; color:white; }
+.waiting-host { display:flex; align-items:center; gap:12px; width:max-content; max-width:100%; padding:14px 18px; border-radius:14px; background:#eeeaff; color:#6855db; font:800 12px 'Space Grotesk'; letter-spacing:1px; line-height:1.3; }
+.waiting-host[hidden] { display:none; }
+.waiting-spinner { width:14px; height:14px; flex:0 0 14px; border:3px solid #6855db45; border-top-color:#6855db; border-radius:50%; animation:arena-spin .8s linear infinite; }
+@keyframes arena-spin { to { transform:rotate(360deg); } }
 @media (pointer:coarse), (max-width:700px) {
   html:has(body.in-game) { overflow:hidden; overscroll-behavior:none; }
   body.in-game { position:fixed; inset:0; margin:0; width:100%; height:var(--visible-height,100dvh); min-height:0; overflow:hidden; overscroll-behavior:none; }

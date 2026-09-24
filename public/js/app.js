@@ -218,8 +218,19 @@ function renderRoom(r) {
   $("#room-error").textContent = "";
   $("#room-code-display").textContent = r.code;
   $("#player-count").textContent = r.players.length;
-  $("#start-game").disabled = !r.players.length || r.players.length < 2;
-  $("#start-game").style.opacity = r.players.length < 2 ? 0.5 : 1;
+  const isHost = String(r.hostId) === String(me?.id);
+  const startButton = $("#start-game");
+  startButton.hidden = !isHost;
+  startButton.disabled = !r.players.length || r.players.length < 2;
+  startButton.style.opacity = r.players.length < 2 ? 0.5 : 1;
+  let waiting = $("#waiting-host");
+  if (!waiting) {
+    waiting = document.createElement("div");
+    waiting.id = "waiting-host";
+    waiting.innerHTML = `<span class="waiting-spinner"></span><span>WAITING FOR THE HOST TO START</span>`;
+    startButton.after(waiting);
+  }
+  waiting.hidden = isHost;
   $("#player-list").innerHTML = r.players
     .map(
       (p) =>
