@@ -14,10 +14,6 @@ const roomInput = $("#room-code");
 roomInput.inputMode = "numeric";
 roomInput.pattern = "[0-9]{4}";
 roomInput.placeholder = "1234";
-const manifestLink = document.createElement("link");
-manifestLink.rel = "manifest";
-manifestLink.href = "/manifest.webmanifest";
-document.head.append(manifestLink);
 if ("serviceWorker" in navigator)
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 const mobileControls = document.createElement("div");
@@ -59,25 +55,6 @@ if (minimapCanvas) {
   minimapCanvas.width = 304;
   minimapCanvas.height = 192;
 }
-let deferredInstallPrompt = null;
-const installApp = document.createElement("button");
-installApp.textContent = "INSTALĂ APLICAȚIA";
-installApp.style.cssText =
-  "display:none;position:fixed;z-index:100;top:72px;left:50%;transform:translateX(-50%);border:0;border-radius:999px;padding:13px 18px;background:#6ee7f9;color:#11162f;font:800 12px 'Space Grotesk';box-shadow:0 8px 24px #0005";
-document.body.append(installApp);
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
-  deferredInstallPrompt = event;
-  if (mobileMode() && !window.matchMedia("(display-mode: standalone)").matches)
-    installApp.style.display = "block";
-});
-installApp.addEventListener("click", async () => {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  installApp.style.display = "none";
-});
 let token = localStorage.getItem("ta_token"),
   me = null,
   room = null,
@@ -503,17 +480,21 @@ function draw() {
     Math.max(w / config.arena.width, h / config.arena.height) * zoom;
   const halfWorldW = w / (2 * scale),
     halfWorldH = h / (2 * scale);
+  const edgePadding = 16 / scale;
+  const bottomPadding = mobileMode()
+    ? (joystick.getBoundingClientRect().height + parseFloat(getComputedStyle(joystick).bottom) + 16) / scale
+    : edgePadding;
   const targetCameraX = Math.max(
-    halfWorldW,
+    halfWorldW - edgePadding,
     Math.min(
-      config.arena.width - halfWorldW,
+      config.arena.width - halfWorldW + edgePadding,
       focus?.x || config.arena.width / 2,
     ),
   );
   const targetCameraY = Math.max(
-    halfWorldH,
+    halfWorldH - edgePadding,
     Math.min(
-      config.arena.height - halfWorldH,
+      config.arena.height - halfWorldH + bottomPadding,
       focus?.y || config.arena.height / 2,
     ),
   );

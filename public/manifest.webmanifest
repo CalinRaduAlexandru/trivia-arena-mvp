@@ -3,9 +3,14 @@
   "short_name": "Trivia Arena",
   "description": "Fast trivia duels in a real-time arena",
   "start_url": "/",
-  "display": "standalone",
-  "orientation": "landscape",
+  "id": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "any",
   "background_color": "#171b35",
   "theme_color": "#171b35",
-  "icons": [{"src":"/assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "icons": [
+    {"src":"/assets/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"}
+  ]
 }
