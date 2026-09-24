@@ -1,0 +1,11 @@
+{
+  "name": "Trivia Arena",
+  "short_name": "Trivia Arena",
+  "description": "Fast trivia duels in a real-time arena",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#171b35",
+  "theme_color": "#171b35",
+  "icons": [{"src":"/assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
