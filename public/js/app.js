@@ -272,6 +272,7 @@ socket.on("game:state", (s) => {
 });
 socket.on("duel:started", (d) => openDuel(d));
 socket.on("duel:cancelled", () => {
+  clearTimeout(duelExpiryTimer);
   duelAnswered = true;
   duelSelectedIndex = null;
   duelQuestionId = null;
@@ -290,6 +291,7 @@ socket.on("duel:visible", (d) => {
   }
 });
 socket.on("duel:resolved", (r) => {
+  clearTimeout(duelExpiryTimer);
   duelAnswered = true;
   duelSelectedIndex = null;
   duelQuestionId = null;
@@ -333,6 +335,7 @@ let massDeltas = [];
 let duelQuestionId = null;
 let duelAnswered = false;
 let duelSelectedIndex = null;
+let duelExpiryTimer = null;
 function showMassDelta(playerResult) {
   const player = gameState?.players.find(
     (p) => p.id === String(playerResult.id),
@@ -356,6 +359,16 @@ function openDuel(d) {
   duelQuestionId = d.question.id;
   duelAnswered = false;
   duelSelectedIndex = null;
+  clearTimeout(duelExpiryTimer);
+  duelExpiryTimer = setTimeout(
+    () => {
+      if (!$("#duel-card").classList.contains("hidden")) {
+        $("#duel-card").classList.add("hidden");
+        toast("DUEL ÎNCHIS · CONEXIUNEA S-A REÎMPROSPĂTAT");
+      }
+    },
+    Math.max(0, d.endsAt - Date.now() + 2000),
+  );
   $("#duel-card").classList.remove("hidden");
   $("#duel-opponent").textContent = d.opponent.username;
   $("#duel-question").textContent = d.question.prompt;
