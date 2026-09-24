@@ -32,7 +32,9 @@ function drawBlob(ctx, p, radius, color, now) {
     body.stretchVelocity += ((target - body.stretch) * 170 - body.stretchVelocity * 14) * step;
     body.stretch += body.stretchVelocity * step;
   }
-  const stretch = reducedBlobMotion.matches ? 0 : body.stretch;
+  const spitAge = (now - (body.spitAt ?? -1000)) / 340;
+  const recoil = spitAge >= 0 && spitAge < 1 ? Math.sin(spitAge * Math.PI * 2) * .22 * (1 - spitAge) : 0;
+  const stretch = reducedBlobMotion.matches ? 0 : body.stretch - recoil;
   const lagX = body.tailX - body.x, lagY = body.tailY - body.y;
   const lagLimit = Math.min(1, radius * 0.6 / (Math.hypot(lagX, lagY) || 1));
   const points = [];
@@ -78,4 +80,49 @@ function drawBlob(ctx, p, radius, color, now) {
   }
   ctx.restore();
   return body;
+}
+
+function drawSlimeProjectile(ctx, slime, now) {
+  ctx.save();
+  ctx.translate(slime.x, slime.y);
+  ctx.rotate(slime.angle);
+  const color = slime.color || '#6ee7f9';
+  const wobble = reducedBlobMotion.matches ? 0 : Math.sin(now / 65) * 3;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 12;
+  // A tapered, sticky strand connects the expelled blob to its droplets.
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-54, wobble); ctx.quadraticCurveTo(-25, -wobble * 2, 0, 0); ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    ctx.globalAlpha = .85 - i * .2;
+    ctx.beginPath(); ctx.ellipse(-28 - i * 16, Math.sin(now / 90 + i) * (i + 1) * 2, 7 - i * 1.5, 4 - i * .7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.beginPath();
+  ctx.moveTo(-30,0);
+  ctx.bezierCurveTo(-12,-8-wobble,3,-23,20,-14);
+  ctx.bezierCurveTo(39,-4,26,21,10,17);
+  ctx.bezierCurveTo(-5,14+wobble,-12,4,-30,0);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffffb0';
+  ctx.beginPath();ctx.ellipse(15,-7,7,3,-.3,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function drawAttachedSlime(ctx, player, now) {
+  const slime = player.slime, r = 10 + Math.sqrt(player.mass) * 3;
+  ctx.save();ctx.translate(player.x,player.y);ctx.rotate(slime.angle);
+  ctx.fillStyle = slime.color || '#6ee7f9';
+  ctx.strokeStyle = '#ffffff99';ctx.lineWidth=2;
+  const pulse = reducedBlobMotion.matches ? 1 : 1 + Math.sin(now / 140) * .05;
+  ctx.beginPath();ctx.ellipse(r * .83,0,r * .26 * pulse,r * .65,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  for (let i=-1;i<=1;i++) {
+    ctx.beginPath();ctx.ellipse(r*(1.03+Math.abs(i)*.03),i*r*.4,r*.16,r*.2,0,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#ffffffaa';ctx.beginPath();ctx.ellipse(r*.9,-r*.24,3,r*.15,0,0,Math.PI*2);ctx.fill();
+  ctx.restore();
 }

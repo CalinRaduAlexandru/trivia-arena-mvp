@@ -4,7 +4,7 @@ const netStatus = document.createElement("div");
 netStatus.id = "net-status";
 netStatus.style.cssText =
   "background:#e8fff4;border-radius:13px;padding:10px 16px;min-width:142px;text-align:center;box-shadow:0 6px 20px #05071628;color:#26a96f;font:800 12px 'Space Grotesk';letter-spacing:1px";
-netStatus.textContent = "PLASĂ · GATA";
+netStatus.textContent = "SLIME · GATA";
 document.querySelector(".hud")?.append(netStatus);
 const roomBadge = document.createElement("div");
 roomBadge.id = "room-badge";
@@ -18,7 +18,7 @@ if ("serviceWorker" in navigator)
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 const mobileControls = document.createElement("div");
 mobileControls.id = "mobile-controls";
-mobileControls.innerHTML = `<div id="minimap"><canvas id="minimap-canvas"></canvas></div><button id="mobile-attack" aria-label="Aruncă plasa"><span>ATAC</span><b>GATA</b></button><div id="joystick"><div id="joystick-thumb"></div></div>`;
+mobileControls.innerHTML = `<div id="minimap"><canvas id="minimap-canvas"></canvas></div><button id="mobile-attack" aria-label="Scuipă slime"><span>ATAC</span><b>GATA</b></button><div id="joystick"><div id="joystick-thumb"></div></div>`;
 mobileControls.style.cssText =
   "display:none;position:absolute;inset:0;z-index:20;pointer-events:none;touch-action:none";
 document.querySelector(".game-wrap")?.append(mobileControls);
@@ -202,6 +202,10 @@ socket.on("game:state", (s) => {
   gameState = s;
 });
 socket.on("duel:started", (d) => openDuel(d));
+socket.on('slime:cast', ({playerId}) => {
+  const body = blobBodies.get(playerId);
+  if (body) body.spitAt = performance.now();
+});
 socket.on("duel:visible", (d) => {
   if (d.a.id !== String(me.id) && d.b.id !== String(me.id)) {
     $("#spectator-duel").classList.remove("hidden");
@@ -307,7 +311,7 @@ function updateHud(end) {
     $("#hud-mass").textContent = Math.round(mep.mass);
     const netLeft = Math.max(0, mep.netCooldownUntil - Date.now());
     netStatus.textContent =
-      netLeft > 0 ? `PLASĂ · ${(netLeft / 1000).toFixed(1)}s` : "PLASĂ · GATA";
+      netLeft > 0 ? `SLIME · ${(netLeft / 1000).toFixed(1)}s` : "SLIME · GATA";
     netStatus.style.color = netLeft > 0 ? "#d66b32" : "#26a96f";
     netStatus.style.background = netLeft > 0 ? "#fff0df" : "#e8fff4";
     if (mobileAttack) {
@@ -360,7 +364,7 @@ addEventListener("keydown", (e) => {
     );
     if (currentPlayer?.netCooldownUntil > Date.now()) {
       toast(
-        `PLASA SE REINCARCA · ${((currentPlayer.netCooldownUntil - Date.now()) / 1000).toFixed(1)}s`,
+        `ATACUL SE REÎNCARCĂ · ${((currentPlayer.netCooldownUntil - Date.now()) / 1000).toFixed(1)}s`,
       );
       e.preventDefault();
       return;
@@ -526,29 +530,7 @@ function draw() {
     ctx.stroke();
   }
   for (const net of gameState.nets || []) {
-    ctx.save();
-    ctx.translate(net.x, net.y);
-    ctx.rotate(net.angle);
-    ctx.strokeStyle = "#ffd76a";
-    ctx.lineWidth = 5;
-    ctx.shadowColor = "#ffd76a";
-    ctx.shadowBlur = 16;
-    ctx.beginPath();
-    ctx.moveTo(-20, -24);
-    ctx.lineTo(20, -24);
-    ctx.lineTo(26, 24);
-    ctx.lineTo(-26, 24);
-    ctx.closePath();
-    for (let x = -20; x <= 20; x += 10) {
-      ctx.moveTo(x, -24);
-      ctx.lineTo(x * 1.3, 24);
-    }
-    for (let y = -14; y <= 14; y += 14) {
-      ctx.moveTo(-24, y);
-      ctx.lineTo(24, y);
-    }
-    ctx.stroke();
-    ctx.restore();
+    drawSlimeProjectile(ctx, net, performance.now());
   }
   const blobNow = performance.now();
   for (const id of blobBodies.keys()) {
@@ -558,6 +540,7 @@ function draw() {
     const body = drawBlob(ctx, player, 10 + Math.sqrt(player.mass) * 3,
       (config.skins.find((s) => s.id === player.skin) || config.skins[0]).color, blobNow);
     const p = { ...player, x: body.x, y: body.y };
+    if (p.slime) drawAttachedSlime(ctx, p, performance.now());
     const skin = config.skins.find((s) => s.id === p.skin) || config.skins[0],
       r = 10 + Math.sqrt(p.mass) * 3;
     ctx.save();

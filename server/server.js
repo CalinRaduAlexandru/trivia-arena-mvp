@@ -127,6 +127,8 @@ function publicState(r) {
       y: net.y,
       angle: net.angle,
       expiresAt: net.expiresAt,
+      color: net.color,
+      bornAt: net.bornAt,
     })),
     players: [...r.players.values()].map((p) => ({
       id: p.id,
@@ -142,6 +144,7 @@ function publicState(r) {
         : null,
       cooldownUntil: p.cooldownUntil,
       netCooldownUntil: p.netCooldownUntil,
+      slime: p.duel ? p.slime : null,
     })),
   };
 }
@@ -171,6 +174,7 @@ function finish(r) {
   });
 }
 function beginDuel(r, a, b) {
+  a.slime = b.slime = null;
   const q = nextQuestion(r),
     endsAt = Date.now() + cfg.arena.duelMs,
     duel = { question: q, endsAt, answers: new Map(), opponentId: b.id };
@@ -262,7 +266,11 @@ function tick(r, dt) {
         45 + Math.sqrt(target.mass) * 2.2
       ) {
         const owner = r.players.get(net.ownerId);
-        if (owner && !owner.duel) beginDuel(r, owner, target);
+        if (owner && !owner.duel && owner.cooldownUntil <= now) {
+          beginDuel(r, owner, target);
+          target.slime = { angle: net.angle + Math.PI, color: net.color, hitAt: now };
+          io.to(r.code).emit('slime:hit', { targetId: target.id, ...target.slime });
+        }
         return false;
       }
     }
@@ -309,6 +317,8 @@ io.on("connection", (socket) => {
     const direction = p.lastDirection || { x: 1, y: 0 };
     p.netCooldownUntil = now + 3000;
     p.room.nets.push({
+      color: cfg.skins.find(s => s.id === p.user.equipped_skin)?.color || '#6ee7f9',
+      bornAt: now,
       id: `${p.id}-${now}`,
       ownerId: p.id,
       x: p.x + direction.x * 35,
@@ -316,6 +326,7 @@ io.on("connection", (socket) => {
       angle: Math.atan2(direction.y, direction.x),
       expiresAt: now + (cfg.arena.netRange / cfg.arena.netSpeed) * 1000,
     });
+    io.to(p.room.code).emit('slime:cast', { playerId: p.id });
   });
   socket.on("duel:answer", ({ index }, ack) => {
     const p = findPlayer(socket);
