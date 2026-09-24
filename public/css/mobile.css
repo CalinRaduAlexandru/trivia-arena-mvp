@@ -14,14 +14,16 @@
   body.in-game #app, body.in-game main, body.in-game #game, body.in-game #game .game-wrap { width:100%; height:100%; min-height:0; padding:0; margin:0; }
   body.in-game #game { position:absolute; inset:0; }
   #game #arena { touch-action:none; }
-  body.in-game { --stick-size:clamp(90px,min(31vw,30dvh),150px); --attack-size:clamp(80px,min(25vw,25dvh),116px); --control-bottom:calc(28px + env(safe-area-inset-bottom)); }
-  #game #joystick { width:var(--stick-size); height:var(--stick-size); right:calc(12px + env(safe-area-inset-right)); bottom:var(--control-bottom); touch-action:none; }
+  body.in-game { --control-size:clamp(96px,min(30vw,30dvh),150px); --control-side:clamp(18px,8vw,84px); --control-bottom:calc(28px + env(safe-area-inset-bottom)); }
+  #game #joystick { width:var(--control-size); height:var(--control-size); right:calc(var(--control-side) + env(safe-area-inset-right)); bottom:var(--control-bottom); touch-action:none; }
   #game #joystick-thumb { width:44%; height:44%; left:28%; top:28%; border-width:4px; }
-  #game #mobile-attack { width:var(--attack-size); height:var(--attack-size); left:calc(12px + env(safe-area-inset-left)); bottom:var(--control-bottom); touch-action:none; font-size:clamp(16px,4vw,20px); }
+  #game #mobile-attack { width:var(--control-size); height:var(--control-size); left:calc(var(--control-side) + env(safe-area-inset-left)); bottom:var(--control-bottom); touch-action:none; font-size:clamp(16px,4vw,20px); }
+  #game #mobile-attack.attack-unavailable { animation:attack-denied .34s ease-out; }
   #game #minimap { top:calc(10px + env(safe-area-inset-top)); left:calc(10px + env(safe-area-inset-left)); width:clamp(96px,29vw,145px); height:auto; aspect-ratio:12/7; }
   #game .hud { right:calc(10px + env(safe-area-inset-right)); }
   #app-mode { display:block; position:fixed; z-index:40; top:calc(78px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); border:1px solid #ffffff40; border-radius:12px; padding:8px 10px; background:#171b35ec; color:#fff; font:600 12px 'DM Sans',sans-serif; }
   #app-mode[hidden] { display:none; }
   #game .duel-card { max-height:calc(var(--visible-height,100dvh) - 24px); overflow:auto; padding:18px; }
-  #game .toast { bottom:calc(var(--stick-size) + var(--control-bottom) + 12px); width:max-content; max-width:90%; text-align:center; }
+  #game .toast { bottom:calc(var(--control-size) + var(--control-bottom) + 12px); width:max-content; max-width:90%; text-align:center; }
 }
+@keyframes attack-denied { 0%,100% { transform:translateX(0) scale(1); filter:brightness(1); } 25% { transform:translateX(-6px) scale(1.06); filter:brightness(1.5); } 50% { transform:translateX(6px) scale(1.06); filter:brightness(1.35); } 75% { transform:translateX(-3px) scale(1.03); } }

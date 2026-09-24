@@ -459,9 +459,11 @@ addEventListener("keydown", (e) => {
       (p) => p.id === String(me?.id),
     );
     if (currentPlayer?.netCooldownUntil > Date.now()) {
-      toast(
-        `ATACUL SE REÎNCARCĂ · ${((currentPlayer.netCooldownUntil - Date.now()) / 1000).toFixed(1)}s`,
-      );
+      if (mobileAttack) {
+        mobileAttack.classList.remove("attack-unavailable");
+        void mobileAttack.offsetWidth;
+        mobileAttack.classList.add("attack-unavailable");
+      }
       e.preventDefault();
       return;
     }
