@@ -358,7 +358,8 @@ function joinRoom(socket, token, code, ack, create) {
     if (!create && !rooms.has(code)) return ack?.({ error: "Room not found." });
     let r = create ? null : rooms.get(code);
     if (create) {
-      do code = crypto.randomBytes(2).toString("hex").toUpperCase();
+      if (rooms.size >= 9000) return ack?.({ error: "All rooms are busy. Try again later." });
+      do code = String(crypto.randomInt(1000, 10000));
       while (rooms.has(code));
       r = {
         code,

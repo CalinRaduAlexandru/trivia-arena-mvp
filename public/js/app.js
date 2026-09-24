@@ -6,6 +6,14 @@ netStatus.style.cssText =
   "background:#e8fff4;border-radius:13px;padding:10px 16px;min-width:142px;text-align:center;box-shadow:0 6px 20px #05071628;color:#26a96f;font:800 12px 'Space Grotesk';letter-spacing:1px";
 netStatus.textContent = "PLASĂ · GATA";
 document.querySelector(".hud")?.append(netStatus);
+const roomBadge = document.createElement("div");
+roomBadge.id = "room-badge";
+roomBadge.hidden = true;
+document.body.append(roomBadge);
+const roomInput = $("#room-code");
+roomInput.inputMode = "numeric";
+roomInput.pattern = "[0-9]{4}";
+roomInput.placeholder = "1234";
 const manifestLink = document.createElement("link");
 manifestLink.rel = "manifest";
 manifestLink.href = "/manifest.webmanifest";
@@ -20,6 +28,7 @@ mobileControls.style.cssText =
 document.querySelector(".game-wrap")?.append(mobileControls);
 const mobileStyle = document.createElement("style");
 mobileStyle.textContent = `
+  #room-badge { position:fixed; z-index:35; bottom:calc(8px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); padding:6px 12px; border-radius:20px; background:#171b35e8; color:#fff; font:600 13px 'DM Sans',sans-serif; white-space:nowrap; pointer-events:none; }
   @media (pointer: coarse), (max-width: 700px) {
     .in-game .top { display:none; }
     .in-game, .in-game #app, .in-game main, .in-game .game-screen { width:100vw; height:100dvh; min-height:100dvh; overflow:hidden; }
@@ -80,6 +89,7 @@ let token = localStorage.getItem("ta_token"),
 const screens = ["auth", "lobby", "room", "game", "results"];
 function show(id) {
   screens.forEach((x) => $("#" + x).classList.toggle("hidden", x !== id));
+  roomBadge.hidden = !room || !["room", "game", "results"].includes(id);
   document.body.classList.toggle("in-game", id === "game");
 }
 function api(path, opts = {}) {
@@ -184,6 +194,7 @@ function roomAck(x) {
   show("room");
 }
 function renderRoom(r) {
+  roomBadge.textContent = `CAMERA · ${r.code}`;
   $("#room-error").textContent = "";
   $("#room-code-display").textContent = r.code;
   $("#player-count").textContent = r.players.length;
@@ -358,7 +369,14 @@ function resize() {
 addEventListener("resize", resize);
 resize();
 let keys = {};
+function canUseGameKeys(event) {
+  const editable = (element) => element instanceof Element &&
+    (element.matches("input, textarea, select") || element.isContentEditable);
+  return !$("#game").classList.contains("hidden") &&
+    !editable(event.target) && !editable(document.activeElement);
+}
 addEventListener("keydown", (e) => {
+  if (!canUseGameKeys(e) || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === "Space") {
     const currentPlayer = gameState?.players.find(
       (p) => p.id === String(me?.id),
@@ -384,7 +402,7 @@ addEventListener("keydown", (e) => {
       "a",
       "s",
       "d",
-    ].includes(e.key)
+    ].map((key) => key.toLowerCase()).includes(e.key.toLowerCase())
   ) {
     keys[e.key.toLowerCase()] = true;
     e.preventDefault();
@@ -392,18 +410,19 @@ addEventListener("keydown", (e) => {
   }
 });
 addEventListener("keyup", (e) => {
+  if (!canUseGameKeys(e) || !Object.hasOwn(keys, e.key.toLowerCase())) return;
   keys[e.key.toLowerCase()] = false;
   sendInput();
 });
-let lastInput = 0;
+addEventListener("blur", () => {
+  keys = {};
+  if (!$("#game").classList.contains("hidden")) sendInput();
+});
 function sendInput() {
   const x =
       (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0),
     y = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
-  if (Date.now() - lastInput > 40) {
-    socket.emit("player:input", { x, y });
-    lastInput = Date.now();
-  }
+  socket.emit("player:input", { x, y });
 }
 const joystick = document.querySelector("#joystick");
 const joystickThumb = document.querySelector("#joystick-thumb");
